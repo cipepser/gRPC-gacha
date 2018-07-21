@@ -29,6 +29,7 @@ message Response {
 ```
 
 ```sh
+❯ cd gacha
 ❯ protoc --go_out=plugins=grpc:./ gacha.proto
 ```
 
