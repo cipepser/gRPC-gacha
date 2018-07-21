@@ -33,6 +33,78 @@ message Response {
 ❯ protoc --go_out=plugins=grpc:./ gacha.proto
 ```
 
+`gacha`ディレクトリの中に`gacha.pb.go`が生成される。
+
+## 実装
+
+### server
+
+`gacha.proto`の`service`で定義したrpc`Lottery`を実装する必要がある。  
+`gacha.pb.go`で定義されるinterfaceは以下の通り。
+
+```go
+// gacha.pb.go
+type GachaServer interface {
+	Lottery(context.Context, *Request) (*Response, error)
+}
+```
+
+`GachaServer`のinterfaceを実装した`server`を以下のようにgrpcのサーバに登録する。
+
+```go
+s := grpc.NewServer()
+pb.RegisterGachaServer(s, &server{})
+```
+
+あとはlistenで待ち受ける。
+サーバ全体の実装は以下の通り。
+
+```go
+// server.go
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"math/rand"
+	"net"
+	"time"
+
+	pb "github.com/cipepser/gRPC-gacha/gacha"
+	"google.golang.org/grpc"
+)
+
+type server struct {
+}
+
+const (
+	port = ":8080"
+)
+
+func main() {
+	l, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatal("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterGachaServer(s, &server{})
+	s.Serve(l)
+}
+
+func (s *server) Lottery(ctx context.Context, in *pb.Request) (*pb.Response, error) {
+	if len(in.Cards) < 1 {
+		return nil, errors.New("empty cards")
+	}
+	rand.Seed(time.Now().UnixNano())
+	chosenKey := rand.Intn(len(in.Cards))
+	return &pb.Response{Card: in.Cards[chosenKey], RetCode: 1}, nil
+}
+```
+
+### client
+
 ## 実行
 
 ### server
